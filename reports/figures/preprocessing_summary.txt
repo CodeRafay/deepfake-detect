@@ -1,0 +1,9 @@
+Module 1: Preprocessing Experiments Summary
+==================================================
+
+Generated Files:
+- degradation_metrics.csv
+- restoration_metrics.csv
+- degradation_comparison.png
+- restoration_comparison.png
+- intensity_transforms.png

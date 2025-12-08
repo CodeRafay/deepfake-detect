@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Detector</title>
+    <meta name="description" content="AI-powered deepfake detection with visual explanations">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-input: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title .icon {
+            font-size: 1.2rem;
+        }
+
+        /* Parameters Panel */
+        .param-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .param-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .param-value {
+            font-weight: 600;
+            color: var(--primary);
+            min-width: 50px;
+            text-align: right;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--bg-input);
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(99, 102, 241, 0.4);
+            transition: transform 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        select {
+            width: 100%;
+            padding: 0.6rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .reset-btn {
+            width: 100%;
+            padding: 0.6rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .reset-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Upload Zone */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(99, 102, 241, 0.05);
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .upload-text {
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .upload-text strong {
+            color: var(--primary);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+        }
+
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .btn-group .btn {
+            margin-top: 0;
+        }
+
+        /* Clear button */
+        .clear-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.9);
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .clear-btn:hover {
+            background: var(--danger);
+            transform: scale(1.1);
+        }
+
+        /* Preview Grid */
+        .preview-wrapper {
+            position: relative;
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 700px) {
+            .preview-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .preview-item {
+            text-align: center;
+        }
+
+        .preview-item h3 {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .preview-item img {
+            max-width: 100%;
+            max-height: 280px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            object-fit: contain;
+            background: var(--bg-input);
+        }
+
+        /* Result Section */
+        .result-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .result-badge {
+            display: inline-block;
+            padding: 0.4rem 1.25rem;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .result-badge.fake {
+            background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .result-badge.real {
+            background: linear-gradient(135deg, var(--success) 0%, #16a34a 100%);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+
+        .confidence-bar {
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.75rem 0;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .confidence-fill.fake {
+            background: linear-gradient(90deg, var(--danger) 0%, #f87171 100%);
+        }
+
+        .confidence-fill.real {
+            background: linear-gradient(90deg, var(--success) 0%, #4ade80 100%);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .stat-item {
+            background: rgba(99, 102, 241, 0.1);
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-top: 0.2rem;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 0.75rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        .preprocessed-badge {
+            display: inline-block;
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .section-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 1rem 0;
+        }
+
+        footer {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-top: 2rem;
+        }
+
+        /* Download link style */
+        .download-link {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 Deepfake Detector</h1>
+            <p class="subtitle">AI-powered image authenticity analysis with visual explanations</p>
+        </header>
+
+        <div class="main-grid">
+            <!-- Left Panel: Parameters -->
+            <div class="params-panel">
+                <div class="card">
+                    <div class="card-title"><span class="icon">⚙️</span> Analysis Parameters</div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Detection Threshold</span>
+                            <span class="param-value" id="threshold-value">50%</span>
+                        </div>
+                        <input type="range" id="threshold" min="10" max="90" value="50" step="5">
+                    </div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Heatmap Opacity</span>
+                            <span class="param-value" id="heatmap-opacity-value">50%</span>
+                        </div>
+                        <input type="range" id="heatmap-opacity" min="10" max="90" value="50" step="5">
+                    </div>
+
+                    <div class="section-divider"></div>
+                    <div class="card-title"><span class="icon">🖼️</span> Preprocessing</div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Denoise Strength</span>
+                            <span class="param-value" id="denoise-value">Off</span>
+                        </div>
+                        <input type="range" id="denoise" min="0" max="20" value="0" step="2">
+                    </div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Gamma Correction</span>
+                            <span class="param-value" id="gamma-value">1.0</span>
+                        </div>
+                        <input type="range" id="gamma" min="0.5" max="2.0" value="1.0" step="0.1">
+                    </div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Contrast Enhancement</span>
+                        </div>
+                        <select id="contrast-mode">
+                            <option value="none">None</option>
+                            <option value="clahe">CLAHE (Adaptive)</option>
+                            <option value="histeq">Histogram Equalization</option>
+                        </select>
+                    </div>
+
+                    <div class="section-divider"></div>
+                    <div class="card-title"><span class="icon">🔬</span> Simulate Degradation</div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>JPEG Compression</span>
+                            <span class="param-value" id="compression-value">Off</span>
+                        </div>
+                        <input type="range" id="compression" min="0" max="100" value="0" step="10">
+                    </div>
+
+                    <button class="reset-btn" onclick="resetParameters()">↻ Reset to Defaults</button>
+                </div>
+            </div>
+
+            <!-- Right Panel: Upload & Results -->
+            <div class="main-panel">
+                <div class="card">
+                    <div class="card-title"><span class="icon">📁</span> Upload Image</div>
+
+                    <div class="upload-zone" id="upload-zone">
+                        <div class="upload-icon">📷</div>
+                        <p class="upload-text">
+                            Drag & drop an image or <strong>click to browse</strong>
+                        </p>
+                        <p style="color: var(--text-secondary); font-size: 0.8rem;">
+                            JPG, PNG, GIF, BMP, WebP (max 16MB)
+                        </p>
+                    </div>
+                    <input type="file" id="file-input" accept="image/*">
+
+                    <div id="preview-container" style="display: none;">
+                        <div class="preview-wrapper">
+                            <button class="clear-btn" id="clear-btn" onclick="clearImage()"
+                                title="Remove image">✕</button>
+                            <div class="preview-grid">
+                                <div class="preview-item">
+                                    <h3>Original Image</h3>
+                                    <img id="preview-image" alt="Preview">
+                                </div>
+                                <div class="preview-item" id="heatmap-container" style="display: none;">
+                                    <h3>Grad-CAM Heatmap</h3>
+                                    <img id="heatmap-image" alt="Heatmap">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn" id="analyze-btn" onclick="analyzeImage()">
+                            🔬 Analyze Image
+                        </button>
+                    </div>
+
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p>Analyzing image with current settings...</p>
+                    </div>
+
+                    <div class="error" id="error"></div>
+
+                    <div id="result-container" style="display: none;" class="result-section">
+                        <div class="result-header">
+                            <span class="result-badge" id="result-badge">FAKE</span>
+                            <span class="preprocessed-badge" id="preprocessed-badge"
+                                style="display: none;">Preprocessed</span>
+                        </div>
+
+                        <div style="margin-top: 1rem;">
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" id="confidence-fill"></div>
+                            </div>
+                            <p id="confidence-text" style="text-align: center; font-size: 0.95rem;"></p>
+                        </div>
+
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="stat-value" id="prob-value">0.00</div>
+                                <div class="stat-label">Fake Prob</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="real-prob-value">0.00</div>
+                                <div class="stat-label">Real Prob</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="confidence-value">0%</div>
+                                <div class="stat-label">Confidence</div>
+                            </div>
+                        </div>
+
+                        <div class="btn-group">
+                            <button class="btn btn-success" onclick="downloadResults()">
+                                📥 Download Report
+                            </button>
+                            <button class="btn btn-secondary" onclick="downloadHeatmap()">
+                                🖼️ Download Heatmap
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Deepfake Detection Pipeline &bull; For educational purposes only</p>
+        </footer>
+    </div>
+
+    <!-- Hidden link for downloads -->
+    <a id="download-link" class="download-link"></a>
+
+    <script>
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImage = document.getElementById('preview-image');
+        const heatmapContainer = document.getElementById('heatmap-container');
+        const heatmapImage = document.getElementById('heatmap-image');
+        const resultContainer = document.getElementById('result-container');
+        const loading = document.getElementById('loading');
+        const errorDiv = document.getElementById('error');
+
+        let currentFile = null;
+        let lastResult = null;
+
+        // Parameter sliders
+        const thresholdSlider = document.getElementById('threshold');
+        const heatmapOpacitySlider = document.getElementById('heatmap-opacity');
+        const denoiseSlider = document.getElementById('denoise');
+        const gammaSlider = document.getElementById('gamma');
+        const contrastSelect = document.getElementById('contrast-mode');
+        const compressionSlider = document.getElementById('compression');
+
+        // Update slider value displays
+        thresholdSlider.addEventListener('input', (e) => {
+            document.getElementById('threshold-value').textContent = e.target.value + '%';
+        });
+
+        heatmapOpacitySlider.addEventListener('input', (e) => {
+            document.getElementById('heatmap-opacity-value').textContent = e.target.value + '%';
+        });
+
+        denoiseSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            document.getElementById('denoise-value').textContent = val === 0 ? 'Off' : val;
+        });
+
+        gammaSlider.addEventListener('input', (e) => {
+            document.getElementById('gamma-value').textContent = parseFloat(e.target.value).toFixed(1);
+        });
+
+        compressionSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            if (val === 0) {
+                document.getElementById('compression-value').textContent = 'Off';
+            } else {
+                document.getElementById('compression-value').textContent = 'Q=' + val;
+            }
+        });
+
+        function resetParameters() {
+            thresholdSlider.value = 50;
+            heatmapOpacitySlider.value = 50;
+            denoiseSlider.value = 0;
+            gammaSlider.value = 1.0;
+            contrastSelect.value = 'none';
+            compressionSlider.value = 0;
+
+            document.getElementById('threshold-value').textContent = '50%';
+            document.getElementById('heatmap-opacity-value').textContent = '50%';
+            document.getElementById('denoise-value').textContent = 'Off';
+            document.getElementById('gamma-value').textContent = '1.0';
+            document.getElementById('compression-value').textContent = 'Off';
+        }
+
+        // Clear image function
+        function clearImage() {
+            currentFile = null;
+            lastResult = null;
+            fileInput.value = '';
+            previewImage.src = '';
+            heatmapImage.src = '';
+            previewContainer.style.display = 'none';
+            resultContainer.style.display = 'none';
+            heatmapContainer.style.display = 'none';
+            uploadZone.style.display = 'flex';
+            hideError();
+        }
+
+        // Upload zone interactions
+        uploadZone.addEventListener('click', () => fileInput.click());
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Please upload an image file.');
+                return;
+            }
+
+            if (file.size > 16 * 1024 * 1024) {
+                showError('File too large. Maximum size is 16MB.');
+                return;
+            }
+
+            currentFile = file;
+            lastResult = null;
+            hideError();
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewContainer.style.display = 'block';
+                resultContainer.style.display = 'none';
+                heatmapContainer.style.display = 'none';
+                uploadZone.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function getParameters() {
+            return {
+                threshold: thresholdSlider.value,
+                heatmap_opacity: heatmapOpacitySlider.value,
+                denoise_strength: denoiseSlider.value,
+                gamma: gammaSlider.value,
+                contrast_mode: contrastSelect.value,
+                simulate_compression: compressionSlider.value
+            };
+        }
+
+        function analyzeImage() {
+            if (!currentFile) {
+                showError('Please select an image first.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', currentFile);
+
+            // Add parameters
+            const params = getParameters();
+            for (const [key, value] of Object.entries(params)) {
+                formData.append(key, value);
+            }
+
+            loading.style.display = 'block';
+            resultContainer.style.display = 'none';
+            hideError();
+            document.getElementById('analyze-btn').disabled = true;
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    loading.style.display = 'none';
+                    document.getElementById('analyze-btn').disabled = false;
+
+                    if (!data.success) {
+                        showError(data.error || 'Analysis failed');
+                        return;
+                    }
+
+                    lastResult = data;
+                    lastResult.filename = currentFile.name;
+                    lastResult.timestamp = new Date().toISOString();
+                    showResults(data);
+                })
+                .catch(error => {
+                    loading.style.display = 'none';
+                    document.getElementById('analyze-btn').disabled = false;
+                    showError('Network error: ' + error.message);
+                });
+        }
+
+        function showResults(data) {
+            resultContainer.style.display = 'block';
+
+            const badge = document.getElementById('result-badge');
+            badge.textContent = data.label.toUpperCase();
+            badge.className = 'result-badge ' + data.label;
+
+            // Show preprocessed badge if applicable
+            const ppBadge = document.getElementById('preprocessed-badge');
+            if (data.preprocessed) {
+                ppBadge.style.display = 'inline-block';
+            } else {
+                ppBadge.style.display = 'none';
+            }
+
+            const fill = document.getElementById('confidence-fill');
+            fill.style.width = data.confidence + '%';
+            fill.className = 'confidence-fill ' + data.label;
+
+            document.getElementById('confidence-text').textContent =
+                `${data.confidence.toFixed(1)}% ${data.label === 'fake' ? 'likely manipulated' : 'likely authentic'}`;
+
+            document.getElementById('prob-value').textContent = data.prob.toFixed(3);
+            document.getElementById('real-prob-value').textContent = (1 - data.prob).toFixed(3);
+            document.getElementById('confidence-value').textContent = data.confidence.toFixed(1) + '%';
+
+            if (data.heatmap_b64) {
+                heatmapImage.src = 'data:image/png;base64,' + data.heatmap_b64;
+                heatmapContainer.style.display = 'block';
+            }
+        }
+
+        function downloadResults() {
+            if (!lastResult) {
+                showError('No results to download. Please analyze an image first.');
+                return;
+            }
+
+            const report = {
+                title: 'Deepfake Detection Report',
+                timestamp: lastResult.timestamp,
+                filename: lastResult.filename,
+                result: {
+                    label: lastResult.label,
+                    confidence: lastResult.confidence.toFixed(2) + '%',
+                    fake_probability: lastResult.prob.toFixed(4),
+                    real_probability: (1 - lastResult.prob).toFixed(4)
+                },
+                settings: lastResult.settings,
+                preprocessed: lastResult.preprocessed
+            };
+
+            const reportText = `
+================================================================================
+                        DEEPFAKE DETECTION REPORT
+================================================================================
+
+Generated: ${new Date(report.timestamp).toLocaleString()}
+Filename:  ${report.filename}
+
+--------------------------------------------------------------------------------
+                              ANALYSIS RESULT
+--------------------------------------------------------------------------------
+
+Classification: ${report.result.label.toUpperCase()}
+Confidence:     ${report.result.confidence}
+
+Fake Probability: ${report.result.fake_probability}
+Real Probability: ${report.result.real_probability}
+
+--------------------------------------------------------------------------------
+                           ANALYSIS SETTINGS
+--------------------------------------------------------------------------------
+
+Detection Threshold:    ${report.settings.threshold}%
+Heatmap Opacity:        ${report.settings.heatmap_opacity}%
+Denoise Strength:       ${report.settings.denoise_strength === 0 ? 'Off' : report.settings.denoise_strength}
+Gamma Correction:       ${report.settings.gamma}
+Contrast Enhancement:   ${report.settings.contrast_mode}
+JPEG Compression:       ${report.settings.compression_quality === 0 ? 'Off' : 'Q=' + report.settings.compression_quality}
+
+Preprocessing Applied:  ${report.preprocessed ? 'Yes' : 'No'}
+
+================================================================================
+                          END OF REPORT
+================================================================================
+`;
+
+            const blob = new Blob([reportText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const link = document.getElementById('download-link');
+            link.href = url;
+            link.download = `deepfake_report_${Date.now()}.txt`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadHeatmap() {
+            if (!lastResult || !lastResult.heatmap_b64) {
+                showError('No heatmap available. Please analyze an image first.');
+                return;
+            }
+
+            const link = document.getElementById('download-link');
+            link.href = 'data:image/png;base64,' + lastResult.heatmap_b64;
+            link.download = `gradcam_heatmap_${Date.now()}.png`;
+            link.click();
+        }
+
+        function showError(message) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function hideError() {
+            errorDiv.style.display = 'none';
+        }
+    </script>
+</body>
+
+</html>
