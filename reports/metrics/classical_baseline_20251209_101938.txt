@@ -1,0 +1,18 @@
+Classical Baseline Results
+========================================
+
+Classifier: SVM
+Features: all
+PCA: True (components: 100)
+Train samples: 5000
+Test samples: 5000
+
+Cross-Validation:
+  Accuracy: 0.9618 ± 0.0050
+
+Test Set Metrics:
+  accuracy: 0.6216
+  precision: 0.8848
+  recall: 0.2796
+  f1: 0.4249
+  auc: 0.6838

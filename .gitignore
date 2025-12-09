@@ -34,8 +34,9 @@ models/*.h5
 models/*.pt
 
 # Data files (not included - use your own dataset)
-data/train/
-data/test/
+data/Validation/
+data/Train/
+data/Test/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -67,3 +68,4 @@ temp/
 
 # PyTorch cache
 .cache/
+.mypy_cache/

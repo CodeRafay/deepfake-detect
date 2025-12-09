@@ -51,11 +51,11 @@ def get_device() -> torch.device:
 def load_image(path: str, color: bool = True) -> Optional[np.ndarray]:
     """
     Load an image from disk.
-    
+
     Args:
         path: Path to image file
         color: If True, load as BGR color image
-    
+
     Returns:
         Image as numpy array or None if failed
     """
@@ -69,11 +69,11 @@ def load_image(path: str, color: bool = True) -> Optional[np.ndarray]:
 def save_image(img: np.ndarray, path: str) -> bool:
     """
     Save an image to disk.
-    
+
     Args:
         img: Image array
         path: Output path
-    
+
     Returns:
         True if successful
     """
@@ -84,24 +84,24 @@ def save_image(img: np.ndarray, path: str) -> bool:
 def get_image_files(directory: str, extensions: Tuple[str, ...] = ('.jpg', '.jpeg', '.png', '.bmp')) -> List[str]:
     """
     Get all image files in a directory.
-    
+
     Args:
         directory: Directory to search
         extensions: Tuple of valid extensions
-    
+
     Returns:
         List of image file paths
     """
-    files = []
+    files = set()  # Use set to avoid duplicates
     directory = Path(directory)
-    
+
     if not directory.exists():
-        return files
-    
+        return []
+
     for ext in extensions:
-        files.extend(directory.glob(f'*{ext}'))
-        files.extend(directory.glob(f'*{ext.upper()}'))
-    
+        files.update(directory.glob(f'*{ext}'))
+        files.update(directory.glob(f'*{ext.upper()}'))
+
     return sorted([str(f) for f in files])
 
 
@@ -122,16 +122,16 @@ def save_figure(fig: plt.Figure, path: str, dpi: int = 150) -> None:
     plt.close(fig)
 
 
-def overlay_heatmap(image: np.ndarray, heatmap: np.ndarray, 
+def overlay_heatmap(image: np.ndarray, heatmap: np.ndarray,
                     alpha: float = 0.5) -> np.ndarray:
     """
     Overlay a heatmap on an image.
-    
+
     Args:
         image: Original image (BGR)
         heatmap: Heatmap array (0-1 or 0-255)
         alpha: Blending factor
-    
+
     Returns:
         Overlaid image
     """
@@ -140,26 +140,26 @@ def overlay_heatmap(image: np.ndarray, heatmap: np.ndarray,
         heatmap = (heatmap * 255).astype(np.uint8)
     else:
         heatmap = heatmap.astype(np.uint8)
-    
+
     # Resize heatmap to match image
     heatmap = cv2.resize(heatmap, (image.shape[1], image.shape[0]))
-    
+
     # Apply colormap
     heatmap_colored = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-    
+
     # Blend
     overlay = cv2.addWeighted(image, 1 - alpha, heatmap_colored, alpha, 0)
-    
+
     return overlay
 
 
 def calculate_class_weights(labels: List[int]) -> torch.Tensor:
     """
     Calculate class weights for imbalanced datasets.
-    
+
     Args:
         labels: List of class labels
-    
+
     Returns:
         Tensor of class weights
     """
@@ -171,16 +171,16 @@ def calculate_class_weights(labels: List[int]) -> torch.Tensor:
 
 class AverageMeter:
     """Computes and stores the average and current value."""
-    
+
     def __init__(self):
         self.reset()
-    
+
     def reset(self):
         self.val = 0
         self.avg = 0
         self.sum = 0
         self.count = 0
-    
+
     def update(self, val, n=1):
         self.val = val
         self.sum += val * n
@@ -190,8 +190,8 @@ class AverageMeter:
 
 class EarlyStopping:
     """Early stopping to stop training when validation loss doesn't improve."""
-    
-    def __init__(self, patience: int = 5, min_delta: float = 0.0, 
+
+    def __init__(self, patience: int = 5, min_delta: float = 0.0,
                  mode: str = 'min'):
         self.patience = patience
         self.min_delta = min_delta
@@ -199,17 +199,17 @@ class EarlyStopping:
         self.counter = 0
         self.best_score = None
         self.early_stop = False
-    
+
     def __call__(self, score: float) -> bool:
         if self.best_score is None:
             self.best_score = score
             return False
-        
+
         if self.mode == 'min':
             improved = score < self.best_score - self.min_delta
         else:
             improved = score > self.best_score + self.min_delta
-        
+
         if improved:
             self.best_score = score
             self.counter = 0
@@ -217,27 +217,27 @@ class EarlyStopping:
             self.counter += 1
             if self.counter >= self.patience:
                 self.early_stop = True
-        
+
         return self.early_stop
 
 
 class MetricsLogger:
     """Simple metrics logger to CSV."""
-    
+
     def __init__(self, log_dir: str, filename: str = 'metrics.csv'):
         self.log_path = os.path.join(log_dir, filename)
         create_directory(log_dir)
         self.headers_written = False
-    
+
     def log(self, metrics: Dict[str, float], epoch: int) -> None:
         """Log metrics for an epoch."""
         metrics['epoch'] = epoch
-        
+
         if not self.headers_written:
             with open(self.log_path, 'w') as f:
                 f.write(','.join(metrics.keys()) + '\n')
             self.headers_written = True
-        
+
         with open(self.log_path, 'a') as f:
             f.write(','.join(str(v) for v in metrics.values()) + '\n')
 

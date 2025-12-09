@@ -14,7 +14,7 @@ An end-to-end deepfake detection system featuring preprocessing, classical ML ba
 ### 1. Clone and Install Dependencies
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/deepfake-detect.git
+git clone https://github.com/CodeRafay/deepfake-detect.git
 cd deepfake-detect
 
 # Create virtual environment
@@ -28,11 +28,13 @@ pip install -r requirements.txt
 ### 2. Prepare Dataset
 
 **Option A**: Generate synthetic test data:
+
 ```bash
 python3 src/generate_sample_data.py --train 100 --test 25
 ```
 
 **Option B**: Use a real dataset (FaceForensics++, Celeb-DF, etc.):
+
 ```
 data/
 ├── train/
@@ -43,7 +45,17 @@ data/
     └── fake/
 ```
 
-### 3. Train Models
+**Option C**: import the below dataset
+
+import kagglehub
+
+# Download latest version
+
+```python
+path = kagglehub.dataset_download("manjilkarki/deepfake-and-real-images")
+
+print("Path to dataset files:", path)
+```
 
 ```bash
 # Train classical baseline (SVM)
@@ -65,14 +77,14 @@ python3 app/app.py
 
 ## Web Interface Features
 
-| Control | Description |
-|---------|-------------|
-| Detection Threshold | Adjust fake/real classification cutoff |
-| Heatmap Opacity | Control Grad-CAM overlay visibility |
-| Denoise Strength | Apply NLM denoising before analysis |
-| Gamma Correction | Adjust image brightness |
-| Contrast Enhancement | CLAHE or histogram equalization |
-| JPEG Compression | Simulate compression artifacts |
+| Control              | Description                            |
+| -------------------- | -------------------------------------- |
+| Detection Threshold  | Adjust fake/real classification cutoff |
+| Heatmap Opacity      | Control Grad-CAM overlay visibility    |
+| Denoise Strength     | Apply NLM denoising before analysis    |
+| Gamma Correction     | Adjust image brightness                |
+| Contrast Enhancement | CLAHE or histogram equalization        |
+| JPEG Compression     | Simulate compression artifacts         |
 
 ## Project Structure
 
@@ -96,12 +108,12 @@ deepfake-detect/
 
 ## API Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Web interface |
-| `/predict` | POST | Upload image for prediction |
-| `/health` | GET | Service status |
-| `/api/info` | GET | API information |
+| Endpoint    | Method | Description                 |
+| ----------- | ------ | --------------------------- |
+| `/`         | GET    | Web interface               |
+| `/predict`  | POST   | Upload image for prediction |
+| `/health`   | GET    | Service status              |
+| `/api/info` | GET    | API information             |
 
 ## Requirements
 
