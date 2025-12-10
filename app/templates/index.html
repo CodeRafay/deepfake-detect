@@ -305,7 +305,7 @@
 
         .preview-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 1rem;
             margin-top: 1rem;
         }
@@ -335,6 +335,33 @@
             border: 1px solid var(--border);
             object-fit: contain;
             background: var(--bg-input);
+        }
+
+        #preview-container, #heatmap-container {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        #preview-container img, #preprocessed-container img, #heatmap-container img {
+            max-width: 100%;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            display: block;
+            margin: 0 auto;
+        }
+
+        #preprocessed-container {
+            background: rgba(245, 158, 11, 0.08);
+            padding: 0.5rem;
+            border-radius: 8px;
+        }
+
+        #preprocessed-container h3 {
+            color: var(--warning) !important;
+        }
+
+        #preprocessed-container img {
+            border-color: var(--warning);
         }
 
         /* Result Section */
@@ -498,6 +525,18 @@
 
                     <div class="param-group">
                         <div class="param-label">
+                            <span>Model Selection</span>
+                        </div>
+                        <select id="model-select">
+                            <option value="">Default (Auto-detect)</option>
+                            {% for model in available_models %}
+                            <option value="{{ model }}">{{ model }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="param-group">
+                        <div class="param-label">
                             <span>Detection Threshold</span>
                             <span class="param-value" id="threshold-value">50%</span>
                         </div>
@@ -517,6 +556,18 @@
 
                     <div class="param-group">
                         <div class="param-label">
+                            <span>Denoise Method</span>
+                        </div>
+                        <select id="denoise-method">
+                            <option value="none">None</option>
+                            <option value="nlm">Non-Local Means (NLM)</option>
+                            <option value="bilateral">Bilateral Filter</option>
+                            <option value="median">Median Filter</option>
+                        </select>
+                    </div>
+
+                    <div class="param-group">
+                        <div class="param-label">
                             <span>Denoise Strength</span>
                             <span class="param-value" id="denoise-value">Off</span>
                         </div>
@@ -533,6 +584,30 @@
 
                     <div class="param-group">
                         <div class="param-label">
+                            <span>Brightness</span>
+                            <span class="param-value" id="brightness-value">0</span>
+                        </div>
+                        <input type="range" id="brightness" min="-50" max="50" value="0" step="5">
+                    </div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Contrast</span>
+                            <span class="param-value" id="contrast-value">1.0</span>
+                        </div>
+                        <input type="range" id="contrast" min="0.5" max="2.0" value="1.0" step="0.1">
+                    </div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Sharpening</span>
+                            <span class="param-value" id="sharpen-value">Off</span>
+                        </div>
+                        <input type="range" id="sharpen" min="0" max="2.0" value="0" step="0.2">
+                    </div>
+
+                    <div class="param-group">
+                        <div class="param-label">
                             <span>Contrast Enhancement</span>
                         </div>
                         <select id="contrast-mode">
@@ -544,6 +619,14 @@
 
                     <div class="section-divider"></div>
                     <div class="card-title"><span class="icon">🔬</span> Simulate Degradation</div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Gaussian Blur</span>
+                            <span class="param-value" id="blur-value">Off</span>
+                        </div>
+                        <input type="range" id="blur" min="0" max="15" value="0" step="2">
+                    </div>
 
                     <div class="param-group">
                         <div class="param-label">
@@ -581,6 +664,10 @@
                                 <div class="preview-item">
                                     <h3>Original Image</h3>
                                     <img id="preview-image" alt="Preview">
+                                </div>
+                                <div class="preview-item" id="preprocessed-container" style="display: none;">
+                                    <h3>After Preprocessing</h3>
+                                    <img id="preprocessed-image" alt="Preprocessed">
                                 </div>
                                 <div class="preview-item" id="heatmap-container" style="display: none;">
                                     <h3>Grad-CAM Heatmap</h3>
@@ -656,6 +743,8 @@
         const fileInput = document.getElementById('file-input');
         const previewContainer = document.getElementById('preview-container');
         const previewImage = document.getElementById('preview-image');
+        const preprocessedContainer = document.getElementById('preprocessed-container');
+        const preprocessedImage = document.getElementById('preprocessed-image');
         const heatmapContainer = document.getElementById('heatmap-container');
         const heatmapImage = document.getElementById('heatmap-image');
         const resultContainer = document.getElementById('result-container');
@@ -668,8 +757,13 @@
         // Parameter sliders
         const thresholdSlider = document.getElementById('threshold');
         const heatmapOpacitySlider = document.getElementById('heatmap-opacity');
+        const denoiseMethodSelect = document.getElementById('denoise-method');
         const denoiseSlider = document.getElementById('denoise');
         const gammaSlider = document.getElementById('gamma');
+        const brightnessSlider = document.getElementById('brightness');
+        const contrastSlider = document.getElementById('contrast');
+        const sharpenSlider = document.getElementById('sharpen');
+        const blurSlider = document.getElementById('blur');
         const contrastSelect = document.getElementById('contrast-mode');
         const compressionSlider = document.getElementById('compression');
 
@@ -691,6 +785,25 @@
             document.getElementById('gamma-value').textContent = parseFloat(e.target.value).toFixed(1);
         });
 
+        brightnessSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            document.getElementById('brightness-value').textContent = val;
+        });
+
+        contrastSlider.addEventListener('input', (e) => {
+            document.getElementById('contrast-value').textContent = parseFloat(e.target.value).toFixed(1);
+        });
+
+        sharpenSlider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('sharpen-value').textContent = val === 0 ? 'Off' : val.toFixed(1);
+        });
+
+        blurSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            document.getElementById('blur-value').textContent = val === 0 ? 'Off' : val;
+        });
+
         compressionSlider.addEventListener('input', (e) => {
             const val = parseInt(e.target.value);
             if (val === 0) {
@@ -703,8 +816,13 @@
         function resetParameters() {
             thresholdSlider.value = 50;
             heatmapOpacitySlider.value = 50;
+            denoiseMethodSelect.value = 'none';
             denoiseSlider.value = 0;
             gammaSlider.value = 1.0;
+            brightnessSlider.value = 0;
+            contrastSlider.value = 1.0;
+            sharpenSlider.value = 0;
+            blurSlider.value = 0;
             contrastSelect.value = 'none';
             compressionSlider.value = 0;
 
@@ -712,6 +830,10 @@
             document.getElementById('heatmap-opacity-value').textContent = '50%';
             document.getElementById('denoise-value').textContent = 'Off';
             document.getElementById('gamma-value').textContent = '1.0';
+            document.getElementById('brightness-value').textContent = '0';
+            document.getElementById('contrast-value').textContent = '1.0';
+            document.getElementById('sharpen-value').textContent = 'Off';
+            document.getElementById('blur-value').textContent = 'Off';
             document.getElementById('compression-value').textContent = 'Off';
         }
 
@@ -721,8 +843,10 @@
             lastResult = null;
             fileInput.value = '';
             previewImage.src = '';
+            preprocessedImage.src = '';
             heatmapImage.src = '';
             previewContainer.style.display = 'none';
+            preprocessedContainer.style.display = 'none';
             resultContainer.style.display = 'none';
             heatmapContainer.style.display = 'none';
             uploadZone.style.display = 'flex';
@@ -774,6 +898,7 @@
             reader.onload = (e) => {
                 previewImage.src = e.target.result;
                 previewContainer.style.display = 'block';
+                preprocessedContainer.style.display = 'none';
                 resultContainer.style.display = 'none';
                 heatmapContainer.style.display = 'none';
                 uploadZone.style.display = 'none';
@@ -783,10 +908,16 @@
 
         function getParameters() {
             return {
+                model: document.getElementById('model-select').value,
                 threshold: thresholdSlider.value,
                 heatmap_opacity: heatmapOpacitySlider.value,
+                denoise_method: denoiseMethodSelect.value,
                 denoise_strength: denoiseSlider.value,
                 gamma: gammaSlider.value,
+                brightness: brightnessSlider.value,
+                contrast: contrastSlider.value,
+                sharpen: sharpenSlider.value,
+                blur: blurSlider.value,
                 contrast_mode: contrastSelect.value,
                 simulate_compression: compressionSlider.value
             };
@@ -864,9 +995,21 @@
             document.getElementById('real-prob-value').textContent = (1 - data.prob).toFixed(3);
             document.getElementById('confidence-value').textContent = data.confidence.toFixed(1) + '%';
 
+            // Show preprocessed image if available
+            if (data.preprocessed_b64) {
+                console.log('Showing preprocessed image');
+                preprocessedImage.src = data.preprocessed_b64;
+                preprocessedContainer.style.display = 'block';
+            } else {
+                console.log('No preprocessed image');
+                preprocessedContainer.style.display = 'none';
+            }
+
             if (data.heatmap_b64) {
                 heatmapImage.src = 'data:image/png;base64,' + data.heatmap_b64;
                 heatmapContainer.style.display = 'block';
+            } else {
+                heatmapContainer.style.display = 'none';
             }
         }
 
