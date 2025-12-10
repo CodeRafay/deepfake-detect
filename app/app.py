@@ -11,7 +11,10 @@ Provides:
 from src.module1_preproc import (
     denoise_nlm, denoise_bilateral, denoise_median, gamma_correction,
     clahe_enhancement, histogram_equalization, jpeg_compress,
-    adjust_brightness_contrast, sharpen_image, add_blur
+    adjust_brightness_contrast, sharpen_image, add_blur,
+    add_gaussian_noise, add_salt_pepper_noise,
+    rotate_image, scale_image, flip_image,
+    compute_psnr, compute_ssim, compute_mse
 )
 from src.gradcam import GradCAM, heatmap_to_base64
 from src.infer import load_model, predict, preprocess_image
@@ -178,6 +181,11 @@ def api_predict():
         heatmap_opacity = float(request.form.get(
             'heatmap_opacity', 50)) / 100.0
         compression_quality = int(request.form.get('simulate_compression', 0))
+        noise_type = request.form.get('noise_type', 'none')
+        noise_intensity = float(request.form.get('noise_intensity', 0))
+        rotation_angle = float(request.form.get('rotation', 0))
+        scale_factor = float(request.form.get('scale', 1.0))
+        flip_mode = request.form.get('flip_mode', 'none')
 
         # Save temporarily
         filename = secure_filename(file.filename)
@@ -188,6 +196,28 @@ def api_predict():
         img = cv2.imread(temp_path)
         original_img = img.copy()
         preprocessed = False
+
+        # Apply geometric transforms first (if any)
+        if flip_mode != 'none':
+            img = flip_image(img, direction=flip_mode)
+            preprocessed = True
+
+        if rotation_angle != 0:
+            img = rotate_image(img, angle=rotation_angle)
+            preprocessed = True
+
+        if scale_factor != 1.0:
+            img = scale_image(img, scale=scale_factor)
+            preprocessed = True
+
+        # Apply noise (degradation)
+        if noise_type != 'none' and noise_intensity > 0:
+            if noise_type == 'gaussian':
+                img = add_gaussian_noise(img, mean=0, std=noise_intensity)
+            elif noise_type == 'salt_pepper':
+                img = add_salt_pepper_noise(
+                    img, amount=noise_intensity / 100.0)
+            preprocessed = True
 
         # Apply preprocessing based on parameters
         if compression_quality > 0 and compression_quality < 100:
@@ -266,12 +296,25 @@ def api_predict():
 
         # Convert preprocessed image to base64 if preprocessing was applied
         preprocessed_b64 = ''
+        quality_metrics = None
         if preprocessed:
             _, buffer = cv2.imencode('.jpg', img)
             preprocessed_b64 = base64.b64encode(buffer).decode('utf-8')
             preprocessed_b64 = f'data:image/jpeg;base64,{preprocessed_b64}'
             print(
                 f"Preprocessed image encoded, length: {len(preprocessed_b64)}")
+
+            # Compute quality metrics comparing preprocessed to original
+            psnr = compute_psnr(original_img, img)
+            ssim = compute_ssim(original_img, img)
+            mse = compute_mse(original_img, img)
+            quality_metrics = {
+                'psnr': psnr,
+                'ssim': ssim,
+                'mse': mse
+            }
+            print(
+                f"Quality metrics - PSNR: {psnr:.2f}, SSIM: {ssim:.4f}, MSE: {mse:.2f}")
         else:
             print("No preprocessing applied")
 
@@ -287,6 +330,7 @@ def api_predict():
             'confidence': confidence,
             'heatmap_b64': heatmap_b64,
             'preprocessed_b64': preprocessed_b64,
+            'quality_metrics': quality_metrics,
             'threshold': threshold,
             'preprocessed': preprocessed,
             'model_used': selected_model if selected_model else 'default',

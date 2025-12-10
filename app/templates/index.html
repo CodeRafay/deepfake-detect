@@ -622,6 +622,25 @@
 
                     <div class="param-group">
                         <div class="param-label">
+                            <span>Add Noise Type</span>
+                        </div>
+                        <select id="noise-type">
+                            <option value="none">None</option>
+                            <option value="gaussian">Gaussian Noise</option>
+                            <option value="salt_pepper">Salt & Pepper</option>
+                        </select>
+                    </div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Noise Intensity</span>
+                            <span class="param-value" id="noise-value">Off</span>
+                        </div>
+                        <input type="range" id="noise-intensity" min="0" max="50" value="0" step="5">
+                    </div>
+
+                    <div class="param-group">
+                        <div class="param-label">
                             <span>Gaussian Blur</span>
                             <span class="param-value" id="blur-value">Off</span>
                         </div>
@@ -634,6 +653,36 @@
                             <span class="param-value" id="compression-value">Off</span>
                         </div>
                         <input type="range" id="compression" min="0" max="100" value="0" step="10">
+                    </div>
+
+                    <div class="section-divider"></div>
+                    <div class="card-title"><span class="icon">🔄</span> Geometric Transforms</div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Rotation</span>
+                            <span class="param-value" id="rotation-value">0°</span>
+                        </div>
+                        <input type="range" id="rotation" min="-45" max="45" value="0" step="5">
+                    </div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Scale</span>
+                            <span class="param-value" id="scale-value">1.0x</span>
+                        </div>
+                        <input type="range" id="scale" min="0.5" max="2.0" value="1.0" step="0.1">
+                    </div>
+
+                    <div class="param-group">
+                        <div class="param-label">
+                            <span>Flip</span>
+                        </div>
+                        <select id="flip-mode">
+                            <option value="none">None</option>
+                            <option value="horizontal">Horizontal</option>
+                            <option value="vertical">Vertical</option>
+                        </select>
                     </div>
 
                     <button class="reset-btn" onclick="resetParameters()">↻ Reset to Defaults</button>
@@ -717,6 +766,21 @@
                             </div>
                         </div>
 
+                        <div class="stats-grid" id="quality-metrics-container" style="display: none; margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                            <div class="stat-item">
+                                <div class="stat-value" id="psnr-value">--</div>
+                                <div class="stat-label">PSNR (dB)</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="ssim-value">--</div>
+                                <div class="stat-label">SSIM</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="mse-value">--</div>
+                                <div class="stat-label">MSE</div>
+                            </div>
+                        </div>
+
                         <div class="btn-group">
                             <button class="btn btn-success" onclick="downloadResults()">
                                 📥 Download Report
@@ -766,6 +830,11 @@
         const blurSlider = document.getElementById('blur');
         const contrastSelect = document.getElementById('contrast-mode');
         const compressionSlider = document.getElementById('compression');
+        const noiseTypeSelect = document.getElementById('noise-type');
+        const noiseIntensitySlider = document.getElementById('noise-intensity');
+        const rotationSlider = document.getElementById('rotation');
+        const scaleSlider = document.getElementById('scale');
+        const flipModeSelect = document.getElementById('flip-mode');
 
         // Update slider value displays
         thresholdSlider.addEventListener('input', (e) => {
@@ -804,6 +873,20 @@
             document.getElementById('blur-value').textContent = val === 0 ? 'Off' : val;
         });
 
+        noiseIntensitySlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            document.getElementById('noise-value').textContent = val === 0 ? 'Off' : val;
+        });
+
+        rotationSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            document.getElementById('rotation-value').textContent = val + '°';
+        });
+
+        scaleSlider.addEventListener('input', (e) => {
+            document.getElementById('scale-value').textContent = parseFloat(e.target.value).toFixed(1) + 'x';
+        });
+
         compressionSlider.addEventListener('input', (e) => {
             const val = parseInt(e.target.value);
             if (val === 0) {
@@ -825,6 +908,11 @@
             blurSlider.value = 0;
             contrastSelect.value = 'none';
             compressionSlider.value = 0;
+            noiseTypeSelect.value = 'none';
+            noiseIntensitySlider.value = 0;
+            rotationSlider.value = 0;
+            scaleSlider.value = 1.0;
+            flipModeSelect.value = 'none';
 
             document.getElementById('threshold-value').textContent = '50%';
             document.getElementById('heatmap-opacity-value').textContent = '50%';
@@ -835,6 +923,9 @@
             document.getElementById('sharpen-value').textContent = 'Off';
             document.getElementById('blur-value').textContent = 'Off';
             document.getElementById('compression-value').textContent = 'Off';
+            document.getElementById('noise-value').textContent = 'Off';
+            document.getElementById('rotation-value').textContent = '0°';
+            document.getElementById('scale-value').textContent = '1.0x';
         }
 
         // Clear image function
@@ -919,7 +1010,12 @@
                 sharpen: sharpenSlider.value,
                 blur: blurSlider.value,
                 contrast_mode: contrastSelect.value,
-                simulate_compression: compressionSlider.value
+                simulate_compression: compressionSlider.value,
+                noise_type: noiseTypeSelect.value,
+                noise_intensity: noiseIntensitySlider.value,
+                rotation: rotationSlider.value,
+                scale: scaleSlider.value,
+                flip_mode: flipModeSelect.value
             };
         }
 
@@ -994,6 +1090,16 @@
             document.getElementById('prob-value').textContent = data.prob.toFixed(3);
             document.getElementById('real-prob-value').textContent = (1 - data.prob).toFixed(3);
             document.getElementById('confidence-value').textContent = data.confidence.toFixed(1) + '%';
+
+            // Show quality metrics if available
+            if (data.quality_metrics) {
+                document.getElementById('quality-metrics-container').style.display = 'grid';
+                document.getElementById('psnr-value').textContent = data.quality_metrics.psnr.toFixed(2);
+                document.getElementById('ssim-value').textContent = data.quality_metrics.ssim.toFixed(4);
+                document.getElementById('mse-value').textContent = data.quality_metrics.mse.toFixed(2);
+            } else {
+                document.getElementById('quality-metrics-container').style.display = 'none';
+            }
 
             // Show preprocessed image if available
             if (data.preprocessed_b64) {
