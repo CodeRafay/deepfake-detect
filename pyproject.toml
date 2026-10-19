@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deepfake-detect"
+version = "0.1.0"
+description = "Face deepfake detection for images and videos: frozen CLIP + linear probe, with honest cross-dataset numbers."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Rafay Adeel" }]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "opencv-python>=4.8",
+    "torch>=2.0",
+    "transformers>=4.30",
+    "safetensors",
+    "huggingface_hub",
+    "scikit-learn",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+app = ["streamlit>=1.30"]
+
+[project.scripts]
+deepfake-detect = "deepfake_detect.cli:main"
+
+[project.urls]
+Source = "https://github.com/CodeRafay/deepfake-detect"
+
+[tool.setuptools]
+packages = ["deepfake_detect"]

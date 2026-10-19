@@ -26,21 +26,17 @@ wheels/
 .installed.cfg
 *.egg
 
-# Model files (too large for GitHub)
-# Download from: [add your link here] or train using: python src/train.py
-models/*.pth
-models/*.pkl
-models/*.h5
-models/*.pt
-
-# Data files (not included - use your own dataset)
-data/Validation/
-data/Train/
-data/Test/
+# Trained heads (published on Hugging Face), embedding cache, datasets
+*.safetensors
+*.metrics.json
+# released heads (a few KB each) are versioned in the repo
+!models/*/head.safetensors
+!models/*/head.metrics.json
+.embeddings/
+data/
 
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb
 
 # IDE
 .idea/
@@ -69,3 +65,5 @@ temp/
 # PyTorch cache
 .cache/
 .mypy_cache/
+# Dataset archives (licensed, never commit)
+*.zip
