@@ -115,9 +115,9 @@ python -m deepfake_detect.train --data data --eval other=path/to/other_dataset -
 It prints a Markdown results table and saves the head, with its metrics stored inside the file. Embeddings are cached in `.embeddings/`, so you can re-run with different settings for free.
 
 **Releasing a new version:**
-1. Put `head.safetensors` and `head.metrics.json` in a new folder, `models/v<N>-<short-description>/`, for example `models/v0.2-clip-lntune-sbi/`.
-2. Add a row to [models/README.md](models/README.md), and point `LATEST` in [model.py](deepfake_detect/model.py) at the new folder.
-3. Commit, push, and run the notebook's publish cell to sync `models/` to Hugging Face.
+1. Before training, set `VERSION` in the notebook's last cell to `v<N>-<short-description>`, for example `v0.2-clip-lntune-sbi`. With the `HF_TOKEN` Kaggle secret attached, the run uploads the head and metrics into that folder on Hugging Face.
+2. Download `head.safetensors`, `head.metrics.json` and the executed notebook (saved as `training_run.ipynb`) into `models/<VERSION>/`.
+3. Add a row to [models/README.md](models/README.md), point `LATEST` in [model.py](deepfake_detect/model.py) at the new folder, then commit and push. Upload the updated `models/README.md` to Hugging Face too, so the versions table matches.
 
 Never edit or delete an old version folder. People may depend on it.
 
