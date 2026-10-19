@@ -10,7 +10,7 @@ FAKE  score=0.912  suspicious.mp4
 REAL  score=0.087  photo.jpg
 ```
 
-> **Status:** pretrained weights are not published yet. To train your own (free, ~1–2 h on Kaggle), see [Train](#train). The [Results](#results) section will be filled in from that run, whatever the numbers turn out to be.
+> **Status:** v0.1 baseline trained: AUC 0.905 on FF++ and **0.738 on unseen Celeb-DF** ([Results](#results)). That's good enough to experiment with, not to rely on. Every model version lives in its own folder in [models/](models/), mirrored on Hugging Face. The models are **for research / non-commercial use only**, because they're trained on FaceForensics++. To train your own (free, ~3 h on Kaggle), see [Train](#train).
 
 ## Install
 
@@ -28,6 +28,7 @@ The first run downloads CLIP ViT-L/14 (~1.7 GB) and a 230 KB face detector. A GP
 ```bash
 deepfake-detect video.mp4 img1.jpg img2.png       # one line per file
 deepfake-detect video.mp4 --json                  # full result, incl. per-frame scores
+deepfake-detect video.mp4 --head v0.1-clip-linear-probe   # pin a model version (default: latest)
 deepfake-detect video.mp4 --head my_head.safetensors --frames 32
 ```
 
@@ -36,7 +37,7 @@ deepfake-detect video.mp4 --head my_head.safetensors --frames 32
 ```python
 from deepfake_detect import Detector
 
-det = Detector()                        # or Detector("my_head.safetensors")
+det = Detector()                        # latest model; or Detector("v0.1-clip-linear-probe")
 r = det.predict("video.mp4")
 r["label"], r["score"]                  # 'fake', 0.91
 r["frames"]                             # [{'time': 0.0, 'score': 0.88, 'faces': 1}, ...]
@@ -76,16 +77,30 @@ Each step is there for a reason:
 
 Train: FaceForensics++ c23 (Deepfakes, Face2Face, FaceSwap, NeuralTextures), official splits.
 
+v0.1, head trained on 8 frames per video, threshold 0.465 chosen on FF++ val:
+
 | test set | seen in training? | videos | AUC | AP | balanced acc | frame AUC |
 |---|---|---|---|---|---|---|
-| FF++ test | same dataset | — | — | — | — | — |
-| Celeb-DF v2 | **no** | — | — | — | — | — |
+| FF++ val | same dataset | 699 | 0.882 | 0.968 | 0.810 | 0.853 |
+| FF++ test | same dataset | 700 | 0.905 | 0.975 | 0.820 | 0.866 |
+| Celeb-DF v2 | **no** | 518 | **0.738** | 0.847 | 0.667 | 0.709 |
 
-*Pending the first training run.* Read the Celeb-DF row. The FF++ row only shows the model learned something. The Celeb-DF row shows whether it generalizes, and a detector you'd use on real content has to hold up on data it hasn't seen.
+Read the Celeb-DF row. The FF++ row only shows the model learned something. The Celeb-DF row shows whether it generalizes, and a detector you'd use on real content has to hold up on data it hasn't seen.
+
+**Honest status:** on unseen data this is roughly at the level of classic baselines, not state of the art (~0.85–0.95 on Celeb-DF). The FF++ threshold also transfers poorly: balanced accuracy drops to 0.667. Next steps are light CLIP tuning (LayerNorm only) and self-blended training images; see [Contributing](#contributing).
 
 ## Train
 
-The notebook [notebooks/train_kaggle.ipynb](notebooks/train_kaggle.ipynb) runs everything on a free Kaggle GPU: official FF++ splits, training, Celeb-DF evaluation, and an optional upload to Hugging Face. Both datasets need an access request to their authors, which is free for research.
+The notebook [notebooks/train_kaggle.ipynb](notebooks/train_kaggle.ipynb) runs everything on a free Kaggle GPU: official FF++ splits, training, Celeb-DF evaluation, and an optional upload to Hugging Face.
+
+**Getting the data.** Both datasets are free for research. Neither can be redistributed, so nobody can hand you a copy; you request access from the authors yourself:
+
+| Dataset | Used for | Request access | What you get |
+|---|---|---|---|
+| FaceForensics++ (c23) | training + same-dataset test | form + terms of use on [ondyari/FaceForensics](https://github.com/ondyari/FaceForensics) | a download script by email. Run it with `--server EU2`. You need `original`, `Deepfakes`, `Face2Face`, `FaceSwap` and `NeuralTextures`, with `-c c23 -t videos` (~10 GB) |
+| Celeb-DF v2 | test on a dataset the model never trained on | Google or Tencent form on [yuezunli/celeb-deepfakeforensics](https://github.com/yuezunli/celeb-deepfakeforensics) | a download link by email (`Celeb-DF-v2.zip`, ~9 GB) |
+
+Approval usually takes a few days. Use an institutional email, give a one-line research purpose, and if you hear nothing for a week, check your spam folder and request again. Upload your copies to Kaggle as **private** datasets. Keep your personal download links to yourself, and never commit the datasets to a repository.
 
 For your own data, put files in this layout (images, videos, or both):
 
@@ -98,6 +113,13 @@ python -m deepfake_detect.train --data data --eval other=path/to/other_dataset -
 ```
 
 It prints a Markdown results table and saves the head, with its metrics stored inside the file. Embeddings are cached in `.embeddings/`, so you can re-run with different settings for free.
+
+**Releasing a new version:**
+1. Put `head.safetensors` and `head.metrics.json` in a new folder, `models/v<N>-<short-description>/`, for example `models/v0.2-clip-lntune-sbi/`.
+2. Add a row to [models/README.md](models/README.md), and point `LATEST` in [model.py](deepfake_detect/model.py) at the new folder.
+3. Commit, push, and run the notebook's publish cell to sync `models/` to Hugging Face.
+
+Never edit or delete an old version folder. People may depend on it.
 
 **Evaluate a trained head on your own data:**
 
@@ -137,7 +159,8 @@ deepfake_detect/
   train.py    embed datasets, fit + evaluate the head
   cli.py      `deepfake-detect` command
   app.py      Streamlit demo
-notebooks/train_kaggle.ipynb   end-to-end training on a free GPU
+models/<version>/              released heads, one folder per version (= the Hugging Face repo)
+notebooks/train_kaggle.ipynb   end-to-end training on a free GPU, plus publishing
 tests/test_core.py             checks that run without model weights
 ```
 
@@ -160,4 +183,4 @@ This project builds on:
 
 ## License
 
-MIT for the code. The CLIP weights have their own license (MIT, OpenAI). Datasets are under their authors' terms. Trained heads inherit the FF++ terms (research use).
+MIT for the code. The CLIP weights have their own license (MIT, OpenAI). Datasets are under their authors' terms. Trained heads, including everything in [models/](models/), inherit the FF++ terms: research and non-commercial use only (see [models/LICENSE](models/LICENSE)). Only small heads (under ~10 MB) are kept in git. Larger versions will live on Hugging Face only.

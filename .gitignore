@@ -29,6 +29,9 @@ wheels/
 # Trained heads (published on Hugging Face), embedding cache, datasets
 *.safetensors
 *.metrics.json
+# released heads (a few KB each) are versioned in the repo
+!models/*/head.safetensors
+!models/*/head.metrics.json
 .embeddings/
 data/
 
@@ -62,3 +65,5 @@ temp/
 # PyTorch cache
 .cache/
 .mypy_cache/
+# Dataset archives (licensed, never commit)
+*.zip

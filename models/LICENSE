@@ -1,0 +1,10 @@
+Model weights in this folder are NOT covered by the repository's MIT license.
+
+Every model here is trained on FaceForensics++ and is therefore limited by the
+FaceForensics Terms of Use (https://github.com/ondyari/FaceForensics):
+
+- research and non-commercial use only
+- no commercial products, services or paid use
+- cite FaceForensics++ (Rössler et al., ICCV 2019) when you publish results
+
+The code in the rest of this repository remains MIT-licensed.

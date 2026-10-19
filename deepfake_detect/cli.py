@@ -9,7 +9,7 @@ from .model import Detector
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="deepfake-detect", description="Scan images or videos for face deepfakes.")
     ap.add_argument("files", nargs="+")
-    ap.add_argument("--head", help="trained head: local .safetensors or Hugging Face repo id")
+    ap.add_argument("--head", help="model version (e.g. v0.1-clip-linear-probe) or path to a .safetensors head (default: latest)")
     ap.add_argument("--frames", type=int, default=16, help="frames sampled per video (default: 16)")
     ap.add_argument("--device", help="cuda / cpu (default: auto)")
     ap.add_argument("--json", action="store_true", help="one JSON object per line")

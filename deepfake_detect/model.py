@@ -12,7 +12,9 @@ import numpy as np
 from .faces import VIDEO_EXTS, crop, detect_faces, load_image, read_frames
 
 DEFAULT_BACKBONE = "openai/clip-vit-large-patch14"
-DEFAULT_HEAD = "CodeRafay/deepfake-detect"  # Hugging Face repo holding head.safetensors
+MODELS_REPO = "CodeRafay/deepfake-detect"  # Hugging Face mirror of this repo's models/ folder
+LATEST = "v0.1-clip-linear-probe"           # models/<version>/head.safetensors
+LOCAL_MODELS = Path(__file__).resolve().parent.parent / "models"
 
 
 class Backbone:
@@ -59,16 +61,21 @@ def load_head(path) -> dict:
 
 
 def _resolve_head(head):
-    if head and Path(head).exists():
+    """A .safetensors path, or a version name like 'v0.1-clip-linear-probe' (default: LATEST).
+    Versions load from models/ in a cloned repo, otherwise from the Hugging Face mirror."""
+    if head and Path(head).is_file():
         return head
+    version = head or LATEST
+    local = LOCAL_MODELS / version / "head.safetensors"
+    if local.is_file():
+        return local
     from huggingface_hub import hf_hub_download
 
-    repo = head or DEFAULT_HEAD
     try:
-        return hf_hub_download(repo, "head.safetensors")
+        return hf_hub_download(MODELS_REPO, f"{version}/head.safetensors")
     except Exception as e:
-        raise FileNotFoundError(f"no local file and no Hugging Face repo '{repo}' with head.safetensors. "
-                                "Train one with `python -m deepfake_detect.train` and pass --head.") from e
+        raise FileNotFoundError(f"'{version}' is neither a file nor a version in {MODELS_REPO}. "
+                                "Train one with `python -m deepfake_detect.train` and pass its path.") from e
 
 
 class Detector:
