@@ -1,0 +1,38 @@
+{
+  "val": {
+    "files": 699,
+    "auc": 0.9648223869154102,
+    "ap": 0.9911666051223886,
+    "balanced_acc": 0.9132890365448505,
+    "frame_auc": 0.9402297059763502
+  },
+  "test": {
+    "files": 700,
+    "auc": 0.9649617346938776,
+    "ap": 0.9915034903372775,
+    "balanced_acc": 0.9026785714285714,
+    "frame_auc": 0.9341166515166013
+  },
+  "celebdf": {
+    "files": 518,
+    "auc": 0.9136979510905486,
+    "ap": 0.9516875403534745,
+    "balanced_acc": 0.8367151354923992,
+    "frame_auc": 0.8426357884591469
+  },
+  "config": {
+    "data": "data",
+    "eval": "['celebdf=celebdf']",
+    "out": "head.safetensors",
+    "backbone": "openai/clip-vit-large-patch14",
+    "frames": "8",
+    "crops": "crops",
+    "fakes": "both",
+    "epochs": "5",
+    "epoch_size": "20000",
+    "batch": "32",
+    "lr": "0.0001",
+    "head_lr": "0.001",
+    "best_epoch": 4
+  }
+}

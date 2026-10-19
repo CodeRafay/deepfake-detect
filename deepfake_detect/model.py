@@ -14,7 +14,7 @@ from .faces import VIDEO_EXTS, crop, detect_faces, load_image, read_frames
 
 DEFAULT_BACKBONE = "openai/clip-vit-large-patch14"
 MODELS_REPO = "CodeRafay/deepfake-detect"  # Hugging Face mirror of this repo's models/ folder
-LATEST = "v0.1-clip-linear-probe"           # models/<version>/head.safetensors
+LATEST = "v0.2-clip-lntune-sbi"             # models/<version>/head.safetensors
 LOCAL_MODELS = Path(__file__).resolve().parent.parent / "models"
 
 

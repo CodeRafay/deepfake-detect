@@ -11,6 +11,7 @@ Trained heads for [deepfake-detect](https://github.com/CodeRafay/deepfake-detect
 
 | version | what changed | FF++ test AUC | Celeb-DF v2 AUC (unseen) | size |
 |---|---|---|---|---|
+| [v0.2-clip-lntune-sbi](v0.2-clip-lntune-sbi) | **latest**: CLIP LayerNorms tuned + self-blended fakes + flip/rescale/JPEG augmentation (best of 5 epochs: 4) | 0.965 | **0.914** | 425 KB |
 | [v0.1-clip-linear-probe](v0.1-clip-linear-probe) | baseline: frozen CLIP + logistic regression, 8 frames/video, FF++ c23 | 0.905 | 0.738 | 3.7 KB |
 
 Every folder contains `head.safetensors`, the model, with its backbone, threshold and metrics stored inside the file, `head.metrics.json` with all numbers from the training run, and `training_run.ipynb`, the executed training notebook with its full log, so every result can be checked.

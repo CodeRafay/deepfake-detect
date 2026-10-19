@@ -10,7 +10,7 @@ FAKE  score=0.912  suspicious.mp4
 REAL  score=0.087  photo.jpg
 ```
 
-> **Status:** v0.1 baseline trained: AUC 0.905 on FF++ and **0.738 on unseen Celeb-DF** ([Results](#results)). That's good enough to experiment with, not to rely on. Every model version lives in its own folder in [models/](models/), mirrored on Hugging Face. The models are **for research / non-commercial use only**, because they're trained on FaceForensics++. To train your own (free, ~3 h on Kaggle), see [Train](#train).
+> **Status:** latest model **v0.2-clip-lntune-sbi**: AUC 0.965 on FF++ and **0.914 on unseen Celeb-DF**, up from 0.738 in v0.1 ([Results](#results)). That's useful for research and triage, but not proof on its own. Every model version lives in its own folder in [models/](models/), mirrored on Hugging Face. The models are **for research / non-commercial use only**, because they're trained on FaceForensics++. To train your own (free, ~3 h on Kaggle), see [Train](#train).
 
 ## Install
 
@@ -77,17 +77,18 @@ Each step is there for a reason:
 
 Train: FaceForensics++ c23 (Deepfakes, Face2Face, FaceSwap, NeuralTextures), official splits.
 
-v0.1, head trained on 8 frames per video, threshold 0.465 chosen on FF++ val:
+Per-video metrics, 8 frames per video; each threshold is chosen on FF++ val.
 
-| test set | seen in training? | videos | AUC | AP | balanced acc | frame AUC |
-|---|---|---|---|---|---|---|
-| FF++ val | same dataset | 699 | 0.882 | 0.968 | 0.810 | 0.853 |
-| FF++ test | same dataset | 700 | 0.905 | 0.975 | 0.820 | 0.866 |
-| Celeb-DF v2 | **no** | 518 | **0.738** | 0.847 | 0.667 | 0.709 |
+| model | test set | seen in training? | videos | AUC | AP | balanced acc | frame AUC |
+|---|---|---|---|---|---|---|---|
+| **v0.2-clip-lntune-sbi** | FF++ test | same dataset | 700 | 0.965 | 0.992 | 0.903 | 0.934 |
+| **v0.2-clip-lntune-sbi** | Celeb-DF v2 | **no** | 518 | **0.914** | 0.952 | **0.837** | 0.843 |
+| v0.1-clip-linear-probe | FF++ test | same dataset | 700 | 0.905 | 0.975 | 0.820 | 0.866 |
+| v0.1-clip-linear-probe | Celeb-DF v2 | **no** | 518 | 0.738 | 0.847 | 0.667 | 0.709 |
 
-Read the Celeb-DF row. The FF++ row only shows the model learned something. The Celeb-DF row shows whether it generalizes, and a detector you'd use on real content has to hold up on data it hasn't seen.
+Read the Celeb-DF rows. The FF++ rows only show the model learned something. The Celeb-DF rows show whether it generalizes, and a detector you'd use on real content has to hold up on data it hasn't seen.
 
-**Honest status:** on unseen data this is roughly at the level of classic baselines, not state of the art (~0.85–0.95 on Celeb-DF). The FF++ threshold also transfers poorly: balanced accuracy drops to 0.667. Next steps are light CLIP tuning (LayerNorm only) and self-blended training images; see [Contributing](#contributing).
+**What changed from v0.1 to v0.2:** tuning only CLIP's LayerNorms and adding self-blended fakes and augmentation raised unseen-dataset AUC from 0.738 to 0.914. The threshold now transfers too: balanced accuracy on Celeb-DF rose from 0.667 to 0.837. Two caveats: this is a single training run with one random seed, and we haven't yet measured which of the three changes did the work. The `--fakes sbi` / `--fakes ffpp` ablations would answer that; see [Contributing](#contributing).
 
 ## Train
 
