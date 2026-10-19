@@ -1,8 +1,9 @@
-"""The whole model: a frozen CLIP image encoder + one linear layer (logistic regression) on top.
+"""The whole model: a CLIP image encoder + one linear layer on top.
 
-CLIP is never fine-tuned. Its features were learned on 400M generic images, so they don't latch onto
-the quirks of one fake-generation method the way a fine-tuned CNN does - that is what makes the
-detector hold up on manipulation methods it never saw (Ojha et al., CVPR 2023, "UnivFD").
+CLIP is never fully fine-tuned. Its features were learned on 400M generic images, so they don't latch onto
+the quirks of one fake-generation method the way a fine-tuned CNN does - that is what makes the detector
+hold up on manipulation methods it never saw (Ojha et al., CVPR 2023, "UnivFD"). v0.1 keeps CLIP frozen;
+v0.2 (finetune.py) tunes only its LayerNorms, which a head file carries as `backbone.*` tensors.
 """
 import json
 from pathlib import Path
@@ -18,9 +19,10 @@ LOCAL_MODELS = Path(__file__).resolve().parent.parent / "models"
 
 
 class Backbone:
-    """Frozen CLIP vision encoder. Training and inference both go through `embed`, so they can't drift apart."""
+    """CLIP vision encoder, optionally with tuned weights (`state`) on top. Training evaluation and inference
+    both go through `embed`, so they can't drift apart."""
 
-    def __init__(self, name: str = DEFAULT_BACKBONE, device: str = None):
+    def __init__(self, name: str = DEFAULT_BACKBONE, device: str = None, state: dict = None):
         import torch
         from transformers import CLIPImageProcessor, CLIPVisionModelWithProjection
 
@@ -29,7 +31,13 @@ class Backbone:
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         dtype = torch.float16 if self.device.startswith("cuda") else torch.float32
         self.processor = CLIPImageProcessor.from_pretrained(name)
-        self.model = CLIPVisionModelWithProjection.from_pretrained(name, torch_dtype=dtype).to(self.device).eval()
+        self.model = CLIPVisionModelWithProjection.from_pretrained(name, torch_dtype=dtype)
+        if state:  # e.g. v0.2's tuned LayerNorms; v0.1 heads have none
+            unexpected = self.model.load_state_dict({k: torch.from_numpy(v) for k, v in state.items()},
+                                                    strict=False).unexpected_keys
+            if unexpected:
+                raise ValueError(f"head has weights this backbone doesn't: {unexpected[:3]}")
+        self.model = self.model.to(self.device).eval()
 
     def embed(self, images: list, batch_size: int = 32) -> np.ndarray:
         """RGB uint8 arrays -> L2-normalised CLIP embeddings, shape (N, D)."""
@@ -42,12 +50,14 @@ class Backbone:
         return np.concatenate(out) if out else np.zeros((0, self.model.config.projection_dim), np.float32)
 
 
-def save_head(path, weight, bias, threshold, backbone, metrics=None):
+def save_head(path, weight, bias, threshold, backbone, metrics=None, state=None):
+    """`state`: tuned backbone weights to apply on top of the pretrained CLIP, stored as `backbone.<name>`."""
     from safetensors.numpy import save_file
 
-    save_file({"weight": np.asarray(weight, np.float32).reshape(-1), "bias": np.array([bias], np.float32)},
-              str(path), metadata={"backbone": backbone, "threshold": str(threshold),
-                                   "metrics": json.dumps(metrics or {})})
+    tensors = {"weight": np.asarray(weight, np.float32).reshape(-1), "bias": np.array([bias], np.float32)}
+    tensors.update({f"backbone.{k}": np.ascontiguousarray(v, np.float32) for k, v in (state or {}).items()})
+    save_file(tensors, str(path), metadata={"backbone": backbone, "threshold": str(threshold),
+                                            "metrics": json.dumps(metrics or {})})
 
 
 def load_head(path) -> dict:
@@ -57,7 +67,8 @@ def load_head(path) -> dict:
         meta = f.metadata()
         return {"weight": f.get_tensor("weight"), "bias": float(f.get_tensor("bias")[0]),
                 "threshold": float(meta["threshold"]), "backbone": meta["backbone"],
-                "metrics": json.loads(meta.get("metrics", "{}"))}
+                "metrics": json.loads(meta.get("metrics", "{}")),
+                "state": {k[len("backbone."):]: f.get_tensor(k) for k in f.keys() if k.startswith("backbone.")}}
 
 
 def _resolve_head(head):
@@ -85,7 +96,7 @@ class Detector:
     def __init__(self, head: str = None, device: str = None):
         self.head = load_head(_resolve_head(head))
         self.threshold = self.head["threshold"]
-        self.backbone = Backbone(self.head["backbone"], device)
+        self.backbone = Backbone(self.head["backbone"], device, self.head["state"])
 
     def score(self, crops: list) -> np.ndarray:
         z = self.backbone.embed(crops) @ self.head["weight"] + self.head["bias"]

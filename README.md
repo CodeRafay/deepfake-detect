@@ -109,8 +109,11 @@ data/train/{real,fake}/   data/val/{real,fake}/   data/test/{real,fake}/   (test
 ```
 
 ```bash
-python -m deepfake_detect.train --data data --eval other=path/to/other_dataset --out head.safetensors
+python -m deepfake_detect.train --data data --eval other=path/to/other_dataset --out head.safetensors      # v0.1: frozen CLIP, minutes on CPU after embedding
+python -m deepfake_detect.finetune --data data --eval other=path/to/other_dataset --out head.safetensors   # v0.2: tunes CLIP's LayerNorms + self-blended fakes, needs a GPU
 ```
+
+`finetune` adds two ideas on top of the frozen probe. It trains only CLIP's ~100k LayerNorm parameters (0.03% of the model), so the features adapt to forensic cues without memorizing FF++. It also creates **self-blended images** ([Shiohara & Yamasaki, CVPR 2022](https://arxiv.org/abs/2204.08376)): a real face blended with a slightly altered copy of itself, which teaches the blend boundary that nearly every face swap leaves. `--fakes sbi` or `--fakes ffpp` trains on one kind of fake only, for ablations.
 
 It prints a Markdown results table and saves the head, with its metrics stored inside the file. Embeddings are cached in `.embeddings/`, so you can re-run with different settings for free.
 

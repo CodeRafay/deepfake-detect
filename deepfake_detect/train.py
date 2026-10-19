@@ -14,6 +14,7 @@ and it is the most common reason deepfake detectors look great on paper and fail
     python -m deepfake_detect.train --head head.safetensors --eval mydata=path/to/mydata   # evaluate only
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -85,6 +86,19 @@ def evaluate(w, b, threshold, X, y, g) -> dict:
             "balanced_acc": balanced_accuracy_score(yf, pf >= threshold), "frame_auc": roc_auc_score(y, p)}
 
 
+def pick_threshold(pf, yf) -> float:
+    """Youden's J on per-file validation scores: the cut that best separates real from fake."""
+    fpr, tpr, thr = roc_curve(yf, pf)
+    return float(np.clip(thr[np.argmax(tpr - fpr)], 0, 1))
+
+
+def print_table(threshold, metrics):
+    print(f"\nthreshold = {threshold:.4f} (chosen on val)\n")
+    print("| set | files | AUC | AP | balanced acc | frame AUC |\n|---|---|---|---|---|---|")
+    for name, m in metrics.items():
+        print(f"| {name} | {m['files']} | {m['auc']:.3f} | {m['ap']:.3f} | {m['balanced_acc']:.3f} | {m['frame_auc']:.3f} |")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", type=Path, help="folder with train/ val/ [test/]")
@@ -99,8 +113,10 @@ def main(argv=None):
         ap.error("pass --data to train or --head to evaluate")
 
     head = load_head(a.head) if a.head else None
-    backbone = Backbone(head["backbone"] if head else a.backbone)
+    backbone = Backbone(head["backbone"], state=head["state"]) if head else Backbone(a.backbone)
     tag = backbone.name.replace("/", "_")
+    if head and head["state"]:  # tuned backbone -> different embeddings, so a separate cache
+        tag += "_" + hashlib.sha1(Path(a.head).read_bytes()).hexdigest()[:8]
 
     def load(name, folder):
         return embed_folder(backbone, Path(folder), a.frames, a.cache / f"{tag}_f{a.frames}_{name}.npz")
@@ -119,19 +135,14 @@ def main(argv=None):
             if best is None or auc > best[0]:
                 best = (auc, clf, pf, yf)
         _, clf, pf, yf = best
-        fpr, tpr, thr = roc_curve(yf, pf)
-        threshold = float(np.clip(thr[np.argmax(tpr - fpr)], 0, 1))  # Youden's J on val
+        threshold = pick_threshold(pf, yf)
         w, b = clf.coef_[0], float(clf.intercept_[0])
 
     sets = ([("val", a.data / "val")] + ([("test", a.data / "test")] if (a.data / "test").exists() else [])
             if a.data else [])
     sets += [tuple(e.split("=", 1)) for e in a.eval]
     metrics = {name: evaluate(w, b, threshold, *load(name, folder)) for name, folder in sets}
-
-    print(f"\nthreshold = {threshold:.4f} (chosen on val)\n")
-    print("| set | files | AUC | AP | balanced acc | frame AUC |\n|---|---|---|---|---|---|")
-    for name, m in metrics.items():
-        print(f"| {name} | {m['files']} | {m['auc']:.3f} | {m['ap']:.3f} | {m['balanced_acc']:.3f} | {m['frame_auc']:.3f} |")
+    print_table(threshold, metrics)
 
     if not head:
         save_head(a.out, w, b, threshold, backbone.name, metrics)
