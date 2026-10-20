@@ -1,0 +1,1 @@
+deepfake-detect @ git+https://github.com/CodeRafay/deepfake-detect

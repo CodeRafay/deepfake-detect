@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from deepfake_detect.faces import IMAGE_EXTS, VIDEO_EXTS
+from deepfake_detect.faces import IMAGE_EXTS, VIDEO_EXTS, draw_faces
 from deepfake_detect.model import Detector
 
 st.set_page_config(page_title="deepfake-detect", page_icon="🔍", layout="wide")
@@ -17,17 +17,6 @@ st.set_page_config(page_title="deepfake-detect", page_icon="🔍", layout="wide"
 @st.cache_resource
 def detector():
     return Detector()
-
-
-def draw_faces(rgb, r):
-    out = rgb.copy()
-    for f in r["faces"]:
-        x0, y0, x1, y1 = f["box"]
-        color = (220, 40, 40) if f["score"] >= r["threshold"] else (40, 180, 70)
-        cv2.rectangle(out, (x0, y0), (x1, y1), color, max(2, out.shape[1] // 300))
-        cv2.putText(out, f"{f['score']:.2f}", (x0, max(y0 - 8, 20)), cv2.FONT_HERSHEY_SIMPLEX,
-                    max(0.6, out.shape[1] / 1200), color, 2)
-    return out
 
 
 st.title("deepfake-detect")

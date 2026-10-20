@@ -76,6 +76,18 @@ def detect_faces(rgb: np.ndarray, margin: float = 0.3, min_size: int = 32, max_s
     return sorted(boxes, key=lambda b: (b[2] - b[0]) * (b[3] - b[1]), reverse=True)
 
 
+def draw_faces(rgb: np.ndarray, result: dict) -> np.ndarray:
+    """Copy of the image with each face boxed: red above the threshold, green below, score on top."""
+    out = rgb.copy()
+    for f in result["faces"]:
+        x0, y0, x1, y1 = f["box"]
+        color = (220, 40, 40) if f["score"] >= result["threshold"] else (40, 180, 70)
+        cv2.rectangle(out, (x0, y0), (x1, y1), color, max(2, out.shape[1] // 300))
+        cv2.putText(out, f"{f['score']:.2f}", (x0, max(y0 - 8, 20)), cv2.FONT_HERSHEY_SIMPLEX,
+                    max(0.6, out.shape[1] / 1200), color, 2)
+    return out
+
+
 def crop(rgb: np.ndarray, box) -> np.ndarray:
     x0, y0, x1, y1 = box
     return rgb[y0:y1, x0:x1]
