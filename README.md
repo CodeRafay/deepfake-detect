@@ -1,8 +1,10 @@
 # deepfake-detect
 
-Detect face deepfakes in images and videos. The model is a frozen CLIP encoder plus a single linear layer, and its accuracy is reported on a dataset it never trained on.
+Detect face deepfakes in images and videos. The model is a CLIP encoder with only its LayerNorms tuned, plus a single linear layer, and its accuracy is reported on a dataset it never trained on.
 
-The repo is small enough to read in an afternoon: about 400 lines across four files. It's meant both as a tool you can use and as a reference for building a detector without fooling yourself.
+**[▶ Try it online](https://huggingface.co/spaces/CodeRafay/deepfake-detect)**: upload an image or video, no install needed. · **[Models](https://huggingface.co/CodeRafay/deepfake-detect)**
+
+The repo is small enough to read in an afternoon: about 700 lines of Python. It's meant both as a tool you can use and as a reference for building a detector without fooling yourself.
 
 ```
 deepfake-detect suspicious.mp4 photo.jpg
