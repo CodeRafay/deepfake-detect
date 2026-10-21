@@ -60,7 +60,7 @@ Upload an image or video. The demo shows the verdict, a box around each face col
 
 ```
 image / video ──► sample frames ──► find faces ──► crop with margin ──► CLIP ViT-L/14 ──► linear ──► score per face
-                  (16, evenly)       (YuNet)        (+30% each side)      (frozen)          layer
+                  (16, evenly)       (YuNet)        (+30% each side)  (LayerNorms tuned)    layer
                                                                                                 │
                                       image: max over faces  ◄──────────────────────────────────┤
                                       video: mean over frames of (max over faces)  ◄────────────┘
@@ -70,9 +70,9 @@ Each step is there for a reason:
 
 1. **Look at faces, not whole images.** Face swaps change about 10% of the pixels. If you resize a 1080p frame to 224 px, the face becomes a blur and the artifacts disappear. Cropping first gives the model the face at full detail.
 2. **Keep a margin around the face.** A face swap is blended into the original frame at the edge of the face. That seam is one of the strongest clues, and a tight crop cuts it off.
-3. **Use frozen CLIP features, not a fine-tuned CNN.** A CNN fine-tuned on FaceForensics++ gets ~99% on FaceForensics++ and often close to chance on anything else. It learns the fingerprint of those four specific manipulation methods. CLIP was trained on 400M ordinary images and is never updated here, so the linear layer has to rely on general-purpose features. [Ojha et al., CVPR 2023](https://arxiv.org/abs/2302.10174) showed this generalizes much better to unseen generators. It also makes training cheap: embed every face once, then fit a logistic regression in seconds.
-4. **A linear head.** The head has 769 parameters. With that few it can't memorize the training set, and you can open the `.safetensors` file and read the whole thing.
-5. **Choose the threshold on validation data.** Both the regularization strength and the decision threshold are picked on the val split. The test sets are only ever used for the final report.
+3. **Start from CLIP and barely change it, instead of fine-tuning a CNN.** A CNN fine-tuned on FaceForensics++ gets ~99% on FaceForensics++ and often close to chance on anything else. It learns the fingerprint of those four specific manipulation methods. CLIP was trained on 400M ordinary images, so its features are general-purpose. [Ojha et al., CVPR 2023](https://arxiv.org/abs/2302.10174) showed that a linear layer on frozen CLIP features generalizes much better to unseen generators, and that's v0.1. v0.2 also tunes CLIP's LayerNorms, about 100k parameters or 0.03% of the model. That's enough to adapt the features to forensic cues, but too few to memorize FF++. Self-blended fakes teach it the blend seam instead of any one generator's fingerprint (see [Train](#train)).
+4. **A linear head.** The head has 769 parameters. With that few it can't memorize the training set, and you can open the `.safetensors` file and read the whole thing. In v0.2 the same file also carries the tuned LayerNorms.
+5. **Choose the threshold on validation data.** Training settings and the decision threshold are picked on the val split. The test sets are only ever used for the final report.
 6. **Score each video, not each frame.** Frames from one video are strongly correlated, so a frame-level AUC overstates how good the model is. Both are reported, but the per-video number is the headline.
 
 ## Results
@@ -161,10 +161,12 @@ These are the mistakes that make a deepfake detector look great on paper and fai
 ```
 deepfake_detect/
   faces.py    read images/videos, detect & crop faces
-  model.py    Backbone (frozen CLIP), head save/load, Detector (predict image/video)
-  train.py    embed datasets, fit + evaluate the head
+  model.py    Backbone (CLIP, + tuned LayerNorms from v0.2), head save/load, Detector (predict image/video)
+  train.py    v0.1: embed datasets, fit + evaluate the head; also evaluates any saved head (--head)
+  finetune.py v0.2: LayerNorm tuning + self-blended fakes
   cli.py      `deepfake-detect` command
   app.py      Streamlit demo
+space/                         Gradio app for the Hugging Face Space (the online demo)
 models/<version>/              released heads, one folder per version (= the Hugging Face repo)
 notebooks/train_kaggle.ipynb   end-to-end training on a free GPU, plus publishing
 tests/test_core.py             checks that run without model weights
